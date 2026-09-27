@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
 
-# 1. CONFIGURACIÓN DE LA PÁGINA (Debe ir al principio)
-st.set_page_config(layout="wide", page_title="Termodinámica Agroindustrial", page_icon="🏭")
+# CONFIGURACIÓN DE LA PÁGINA
+st.set_page_config(layout="wide", page_title="Termodinámica Agroindustrial", page_icon="🌱")
 
-# Mejorar el estilo visual de las gráficas de Matplotlib
+# Estilo visual de las gráficas
 plt.style.use('ggplot')
 
 # Base de datos: Tc [K], Pc [bar], w (factor acéntrico)
@@ -16,7 +16,7 @@ GASES_PROPS = {
     "Nitrógeno (N2)":           (126.2, 34.0, 0.037),
     "Etanol (C2H5OH)":          (513.9, 61.4, 0.644),
     "Metano (CH4)":             (190.6, 46.1, 0.011),
-    "Amoníaco (NH3)":           (405.4, 113.5, 0.253), # Excelente refrigerante agroindustrial
+    "Amoníaco (NH3)":           (405.4, 113.5, 0.253), 
     "Propano (C3H8)":           (369.8, 42.5, 0.152)
 }
 
@@ -51,23 +51,20 @@ def maxwell_vdw(T, a, b):
     except:
         return np.nan, np.nan, np.nan
 
-
 # ==========================================
 # INTERFAZ DE USUARIO (UI)
 # ==========================================
 
-# Título Principal
-st.title("🏭 Dashboard Termodinámico: Fluidos Reales")
+st.title("🌱 Dashboard Termodinámico: Fluidos Reales")
 st.markdown("Herramienta de análisis para procesos de refrigeración y fluidos supercríticos en la agroindustria.")
 st.markdown("---")
 
-# BARRA LATERAL (Sidebar) para los controles
 st.sidebar.header("⚙️ Panel de Control")
 gas = st.sidebar.selectbox("Selecciona el Fluido de Trabajo:", list(GASES_PROPS.keys()))
 modelo = st.sidebar.selectbox("Ecuación de Estado:", ["Van der Waals", "Peng-Robinson"])
 
 st.sidebar.markdown("---")
-st.sidebar.success("💡 **Tip para la exposición:**\nEn la agroindustria, conocer el punto crítico del CO2 es vital para extraer aceites esenciales o descafeinar café. Por otro lado, fluidos como el Amoníaco (NH3) son los reyes de la refrigeración industrial.")
+st.sidebar.success("💡 **Tip Agroindustrial:**\nConocer el punto crítico del CO2 es vital para extraer aceites esenciales sin degradarlos térmicamente. Fluidos como el Amoníaco (NH3) son fundamentales en los sistemas de refrigeración de la cadena de frío.")
 
 modelo_key = "vdw" if modelo == "Van der Waals" else "pr"
 Tc, Pc, w = GASES_PROPS[gas]
@@ -85,8 +82,6 @@ def calc_P(V, T):
         alpha = (1 + kappa * (1 - np.sqrt(T / Tc)))**2
         return (R * T) / (V - b) - (a * alpha) / (V**2 + 2*b*V - b**2)
 
-
-# MÉTRICAS VISUALES SUPERIORES
 st.subheader(f"📊 Propiedades Críticas del {gas.split()[0]}")
 col1, col2, col3 = st.columns(3)
 col1.metric(label="Temperatura Crítica (Tc)", value=f"{Tc} K")
@@ -94,13 +89,11 @@ col2.metric(label="Presión Crítica (Pc)", value=f"{Pc} bar")
 col3.metric(label="Volumen Crítico (Vc)", value=f"{Vc:.4f} L/mol")
 st.markdown("<br>", unsafe_allow_html=True)
 
-
-# PESTAÑAS DE GRÁFICOS
 tab1, tab2 = st.tabs(["📉 Análisis 2D (Isotermas y Factor Z)", "🧊 Superficie 3D (P-V-T)"])
 
 with tab1:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
-    fig.patch.set_facecolor('none') # Fondo transparente para integrarse al modo oscuro
+    fig.patch.set_facecolor('none') 
     
     V_arr = np.linspace(1.05 * b, 8 * Vc, 500)
     T_sub = Tc * 0.85
@@ -108,7 +101,9 @@ with tab1:
     T_sup = Tc * 1.15
 
     P_sub = calc_P(V_arr, T_sub)
-    ax1.plot(V_arr, P_sub, color='#1f77b4', label=f'Subcrítica ({T_sub:.1f} K)')
+    
+    # NUEVA PALETA AGRO: Verde hoja, Terracota, Amarillo trigo
+    ax1.plot(V_arr, P_sub, color='#2E7D32', label=f'Subcrítica ({T_sub:.1f} K)')
     
     if modelo_key == "vdw":
         Vl, Vv, Psat = maxwell_vdw(T_sub, a, b)
@@ -117,12 +112,12 @@ with tab1:
             ax1.scatter([Vl, Vv], [Psat, Psat], color='black', zorder=5)
             V_mid = V_arr[(V_arr >= Vl) & (V_arr <= Vv)]
             P_mid = P_sub[(V_arr >= Vl) & (V_arr <= Vv)]
-            ax1.fill_between(V_mid, Psat, P_mid, where=(P_mid > Psat), color='red', alpha=0.2)
-            ax1.fill_between(V_mid, Psat, P_mid, where=(P_mid < Psat), color='blue', alpha=0.2)
+            ax1.fill_between(V_mid, Psat, P_mid, where=(P_mid > Psat), color='#FFAB91', alpha=0.3)
+            ax1.fill_between(V_mid, Psat, P_mid, where=(P_mid < Psat), color='#81C784', alpha=0.3)
 
-    ax1.plot(V_arr, calc_P(V_arr, T_crit), color='#d62728', lw=2.5, label=f'Crítica ({T_crit:.1f} K)')
-    ax1.plot(V_arr, calc_P(V_arr, T_sup), color='#ff7f0e', label=f'Supercrítica ({T_sup:.1f} K)')
-    ax1.scatter([Vc], [Pc], color='darkred', s=80, zorder=6, label='Punto Crítico')
+    ax1.plot(V_arr, calc_P(V_arr, T_crit), color='#D84315', lw=2.5, label=f'Crítica ({T_crit:.1f} K)')
+    ax1.plot(V_arr, calc_P(V_arr, T_sup), color='#FBC02D', label=f'Supercrítica ({T_sup:.1f} K)')
+    ax1.scatter([Vc], [Pc], color='#3E2723', s=80, zorder=6, label='Punto Crítico')
     
     ax1.set_title(f'Diagrama P-V', fontweight='bold')
     ax1.set_xlabel('Volumen (L/mol)')
@@ -131,11 +126,10 @@ with tab1:
     ax1.set_xlim(0, Vc * 5)
     ax1.legend()
 
-    # Gráfico Z
     Z_sub = (P_sub * V_arr) / (R * T_sub)
     Z_crit = (calc_P(V_arr, T_crit) * V_arr) / (R * T_crit)
-    ax2.plot(P_sub, Z_sub, color='#1f77b4', label=f'T = {T_sub:.1f} K')
-    ax2.plot(calc_P(V_arr, T_crit), Z_crit, color='#d62728', lw=2.5, label=f'T = {T_crit:.1f} K')
+    ax2.plot(P_sub, Z_sub, color='#2E7D32', label=f'T = {T_sub:.1f} K')
+    ax2.plot(calc_P(V_arr, T_crit), Z_crit, color='#D84315', lw=2.5, label=f'T = {T_crit:.1f} K')
     ax2.axhline(1, color='gray', linestyle='--', label='Gas Ideal (Z=1)')
     ax2.set_title(f'Desviación de la Idealidad (Z)', fontweight='bold')
     ax2.set_xlabel('Presión (bar)')
@@ -148,7 +142,7 @@ with tab1:
     st.pyplot(fig)
 
 with tab2:
-    st.markdown("Visualización espacial de la cúpula de saturación. El punto rojo marca el estado crítico donde convergen el líquido y el vapor.")
+    st.markdown("Visualización espacial de la cúpula de saturación. El punto central oscuro marca el estado crítico.")
     fig3d = plt.figure(figsize=(10, 7))
     fig3d.patch.set_facecolor('none')
     ax3d = fig3d.add_subplot(111, projection='3d')
@@ -159,8 +153,9 @@ with tab2:
     P_mesh = calc_P(V_mesh, T_mesh)
     P_mesh = np.clip(P_mesh, 0, Pc * 3)
     
-    surf = ax3d.plot_surface(V_mesh, T_mesh, P_mesh, cmap='coolwarm', edgecolor='none', alpha=0.9)
-    ax3d.scatter([Vc], [Tc], [Pc], color='black', s=100, label='Punto Crítico')
+    # NUEVA PALETA 3D: YlGn (Amarillos y Verdes)
+    surf = ax3d.plot_surface(V_mesh, T_mesh, P_mesh, cmap='YlGn', edgecolor='none', alpha=0.9)
+    ax3d.scatter([Vc], [Tc], [Pc], color='#3E2723', s=100, label='Punto Crítico')
     ax3d.set_title(f'Superficie 3D Termodinámica', fontweight='bold')
     ax3d.set_xlabel('Volumen (L/mol)')
     ax3d.set_ylabel('Temperatura (K)')
