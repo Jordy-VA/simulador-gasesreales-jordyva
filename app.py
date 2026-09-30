@@ -8,7 +8,6 @@ from scipy.optimize import fsolve
 # ==========================================
 st.set_page_config(layout="wide", page_title="Termodinámica Agroindustrial", page_icon="🌱")
 
-# CSS para el diseño de las tarjetas de métricas
 st.markdown("""
 <style>
 div[data-testid="metric-container"] {
@@ -26,7 +25,6 @@ div[data-testid="stMetricValue"] > div { color: #81c784; }
 # ==========================================
 # 2. BASE DE DATOS Y FUNCIONES FÍSICAS
 # ==========================================
-# Datos: (Tc [K], Pc [bar], w [factor acéntrico], Masa Molar [kg/mol])
 GASES_PROPS = {
     "Dióxido de Carbono (CO2)": (304.2, 73.8, 0.224, 0.04401),
     "Agua (H2O)":               (647.1, 220.6, 0.344, 0.018015),
@@ -37,8 +35,8 @@ GASES_PROPS = {
     "Propano (C3H8)":           (369.8, 42.5, 0.152, 0.04410)
 }
 
-R_bar = 0.08314 # Constante para ecuaciones de estado (L bar / mol K)
-R_J = 8.314     # Constante para cinética de Maxwell (Joules / mol K)
+R_bar = 0.08314 
+R_J = 8.314     
 
 def parametros_eos(Tc, Pc, w, modelo="vdw"):
     if modelo == "vdw":
@@ -73,6 +71,22 @@ st.sidebar.header("⚙️ Panel de Control")
 gas = st.sidebar.selectbox("Selecciona el Fluido de Trabajo:", list(GASES_PROPS.keys()))
 modelo = st.sidebar.selectbox("Ecuación de Estado:", ["Van der Waals", "Peng-Robinson"])
 
+st.sidebar.markdown("---")
+
+# DICCIONARIO DE TIPS DINÁMICOS
+TIPS_AGRO = {
+    "Dióxido de Carbono (CO2)": "💡 **Aplicación Agroindustrial:** El CO2 supercrítico es vital para extraer aceites esenciales o descafeinar café. Su baja temperatura crítica (31°C) evita la degradación térmica de compuestos sensibles.",
+    "Agua (H2O)": "💡 **Aplicación Agroindustrial:** El vapor sobrecalentado es el principal medio de transferencia de calor en marmitas, pasteurización y esterilización de alimentos.",
+    "Nitrógeno (N2)": "💡 **Aplicación Agroindustrial:** En fase líquida (criogénico) se usa para el congelamiento ultra rápido (IQF) de frutas y hortalizas. Como gas, se usa en envasado de atmósfera modificada.",
+    "Etanol (C2H5OH)": "💡 **Aplicación Agroindustrial:** Solvente orgánico GRAS (seguro) utilizado en la extracción de pigmentos y biocompuestos, y como fluido secundario en refrigeración.",
+    "Metano (CH4)": "💡 **Aplicación Agroindustrial:** Componente principal del biogás, obtenido por biodigestión anaerobia de residuos agrícolas para la cogeneración de energía térmica y eléctrica.",
+    "Amoníaco (NH3)": "💡 **Aplicación Agroindustrial:** El refrigerante industrial por excelencia. Su alto calor latente de vaporización lo hace el rey de la cadena de frío en frigoríficos de agroexportación.",
+    "Propano (C3H8)": "💡 **Aplicación Agroindustrial:** Conocido como R-290, es un refrigerante ecológico que está reemplazando a los freones en equipos comerciales por su bajo potencial de calentamiento global."
+}
+
+# Mostrar el tip dinámico según el gas seleccionado
+st.sidebar.success(TIPS_AGRO[gas])
+
 Tc, Pc, w, MasaMolar = GASES_PROPS[gas]
 modelo_key = "vdw" if modelo == "Van der Waals" else "pr"
 Vc = (3 * R_bar * Tc) / (8 * Pc) if modelo_key == "vdw" else 0.307 * R_bar * Tc / Pc
@@ -106,7 +120,6 @@ with tab1:
     T_sub, T_crit, T_sup = Tc * 0.85, Tc, Tc * 1.15
     P_sub = calc_P(V_arr, T_sub)
 
-    # Gráfico P-V
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(x=V_arr, y=P_sub, name=f'Subcrítica ({T_sub:.1f} K)', line=dict(color='#4caf50', width=3)))
     if modelo_key == "vdw":
@@ -122,7 +135,6 @@ with tab1:
     with colA: 
         st.plotly_chart(fig1, use_container_width=True)
 
-    # Gráfico Z
     fig2 = go.Figure()
     fig2.add_trace(go.Scatter(x=P_sub, y=(P_sub * V_arr) / (R_bar * T_sub), name=f'T = {T_sub:.1f} K', line=dict(color='#4caf50', width=3)))
     fig2.add_trace(go.Scatter(x=calc_P(V_arr, T_crit), y=(calc_P(V_arr, T_crit) * V_arr) / (R_bar * T_crit), name=f'T = {T_crit:.1f} K', line=dict(color='#ff9800', width=3)))
