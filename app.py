@@ -3,8 +3,12 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.optimize import fsolve
 
+# ==========================================
+# 1. CONFIGURACIÓN Y ESTILOS
+# ==========================================
 st.set_page_config(layout="wide", page_title="Termodinámica Agroindustrial", page_icon="🌱")
 
+# CSS para el diseño de las tarjetas de métricas
 st.markdown("""
 <style>
 div[data-testid="metric-container"] {
@@ -19,7 +23,10 @@ div[data-testid="stMetricValue"] > div { color: #81c784; }
 </style>
 """, unsafe_allow_html=True)
 
-# Base de datos actualizada: (Tc [K], Pc [bar], w [factor acéntrico], Masa Molar [kg/mol])
+# ==========================================
+# 2. BASE DE DATOS Y FUNCIONES FÍSICAS
+# ==========================================
+# Datos: (Tc [K], Pc [bar], w [factor acéntrico], Masa Molar [kg/mol])
 GASES_PROPS = {
     "Dióxido de Carbono (CO2)": (304.2, 73.8, 0.224, 0.04401),
     "Agua (H2O)":               (647.1, 220.6, 0.344, 0.018015),
@@ -30,8 +37,8 @@ GASES_PROPS = {
     "Propano (C3H8)":           (369.8, 42.5, 0.152, 0.04410)
 }
 
-R_bar = 0.08314 # Para Van der Waals (L bar / mol K)
-R_J = 8.314     # Para Maxwell-Boltzmann (Joules / mol K)
+R_bar = 0.08314 # Constante para ecuaciones de estado (L bar / mol K)
+R_J = 8.314     # Constante para cinética de Maxwell (Joules / mol K)
 
 def parametros_eos(Tc, Pc, w, modelo="vdw"):
     if modelo == "vdw":
@@ -56,7 +63,9 @@ def maxwell_vdw(T, a, b):
     except:
         return np.nan, np.nan, np.nan
 
-# ================= INTERFAZ =================
+# ==========================================
+# 3. INTERFAZ DE USUARIO (UI)
+# ==========================================
 st.title("🌱 Dashboard Termodinámico: Fluidos Reales y Cinética Molecular")
 st.markdown("Herramienta interactiva para ingeniería agroindustrial y fisicoquímica.")
 
@@ -80,73 +89,87 @@ def calc_P(V, T):
         alpha = (1 + kappa * (1 - np.sqrt(T / Tc)))**2
         return (R_bar * T) / (V - b) - (a * alpha) / (V**2 + 2*b*V - b**2)
 
+# Tarjetas superiores
 col1, col2, col3 = st.columns(3)
 col1.metric("Temperatura Crítica (Tc)", f"{Tc} K")
 col2.metric("Presión Crítica (Pc)", f"{Pc} bar")
 col3.metric("Masa Molar (M)", f"{MasaMolar*1000:.2f} g/mol")
 st.markdown("<br>", unsafe_allow_html=True)
 
-# === PESTAÑAS ===
-tab1, tab2, tab3 = st.tabs(["📉 Análisis 2D (Gases Reales)", "🧊 Superficie 3D", "🚀 Velocidad Molecular (Maxwell-Boltzmann)"])
+# Pestañas
+tab1, tab2, tab3 = st.tabs(["📉 Análisis 2D (Gases Reales)", "🧊 Superficie 3D", "🚀 Velocidad Molecular (Maxwell)"])
 
-# ... (El código de tab1 y tab2 queda igual que antes, gestionado internamente)
+# --- PESTAÑA 1: Gráficos 2D ---
 with tab1:
     colA, colB = st.columns(2)
     V_arr = np.linspace(1.05 * b, 8 * Vc, 500)
     T_sub, T_crit, T_sup = Tc * 0.85, Tc, Tc * 1.15
     P_sub = calc_P(V_arr, T_sub)
 
+    # Gráfico P-V
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(x=V_arr, y=P_sub, name=f'Subcrítica ({T_sub:.1f} K)', line=dict(color='#4caf50', width=3)))
     if modelo_key == "vdw":
         Vl, Vv, Psat = maxwell_vdw(T_sub, a, b)
         if not np.isnan(Psat):
-            fig1.add_trace(go.Scatter(x=[Vl, Vv], y=[Psat, Psat], name='Condensación', line=dict(color='gray', width=2, dash='dash')))
+            fig1.add_trace(go.Scatter(x=[Vl, Vv], y=[Psat, Psat], name='Condensación (Maxwell)', line=dict(color='gray', width=2, dash='dash')))
     fig1.add_trace(go.Scatter(x=V_arr, y=calc_P(V_arr, T_crit), name=f'Crítica ({T_crit:.1f} K)', line=dict(color='#ff9800', width=3)))
+    fig1.add_trace(go.Scatter(x=V_arr, y=calc_P(V_arr, T_sup), name=f'Supercrítica ({T_sup:.1f} K)', line=dict(color='#ffeb3b', width=3)))
     fig1.add_trace(go.Scatter(x=[Vc], y=[Pc], mode='markers', name='Punto Crítico', marker=dict(color='red', size=10)))
-    fig1.update_layout(title="Diagrama Presión vs Volumen", xaxis_title="Volumen (L/mol)", yaxis_title="Presión (bar)", yaxis=dict(range=[0, Pc * 2]), xaxis=dict(range=[0, Vc * 5]))
-    with colA: st.plotly_chart(fig1, use_container_width=True)
+    
+    fig1.update_layout(title="Diagrama Presión vs Volumen", xaxis_title="Volumen (L/mol)", yaxis_title="Presión (bar)", 
+                       yaxis=dict(range=[0, Pc * 2]), xaxis=dict(range=[0, Vc * 5]), hovermode="x unified")
+    with colA: 
+        st.plotly_chart(fig1, use_container_width=True)
 
+    # Gráfico Z
     fig2 = go.Figure()
     fig2.add_trace(go.Scatter(x=P_sub, y=(P_sub * V_arr) / (R_bar * T_sub), name=f'T = {T_sub:.1f} K', line=dict(color='#4caf50', width=3)))
     fig2.add_trace(go.Scatter(x=calc_P(V_arr, T_crit), y=(calc_P(V_arr, T_crit) * V_arr) / (R_bar * T_crit), name=f'T = {T_crit:.1f} K', line=dict(color='#ff9800', width=3)))
     fig2.add_shape(type="line", x0=0, y0=1, x1=Pc*2, y1=1, line=dict(color="gray", width=2, dash="dash"))
-    fig2.update_layout(title="Factor de Compresibilidad (Z)", xaxis_title="Presión (bar)", yaxis_title="Z", yaxis=dict(range=[0, 1.2]), xaxis=dict(range=[0, Pc * 2]))
-    with colB: st.plotly_chart(fig2, use_container_width=True)
+    
+    fig2.update_layout(title="Factor de Compresibilidad (Z)", xaxis_title="Presión (bar)", yaxis_title="Z", 
+                       yaxis=dict(range=[0, 1.2]), xaxis=dict(range=[0, Pc * 2]), hovermode="x unified")
+    with colB: 
+        st.plotly_chart(fig2, use_container_width=True)
 
+# --- PESTAÑA 2: Superficie 3D ---
 with tab2:
+    st.markdown("Visualización espacial interactiva. ¡Gira y acerca la campana P-V-T con el ratón!")
+    
     V_grid, T_grid = np.meshgrid(np.linspace(1.2 * b, 5 * Vc, 50), np.linspace(Tc * 0.7, Tc * 1.3, 50))
     P_mesh = np.clip(calc_P(V_grid, T_grid), 0, Pc * 3)
+    
     fig3 = go.Figure(data=[go.Surface(z=P_mesh, x=V_grid, y=T_grid, colorscale='Greens', opacity=0.9)])
     fig3.add_trace(go.Scatter3d(x=[Vc], y=[Tc], z=[Pc], mode='markers', name='Punto Crítico', marker=dict(color='red', size=8)))
+    
     fig3.update_layout(scene=dict(xaxis_title='Volumen', yaxis_title='Temperatura', zaxis_title='Presión'), margin=dict(l=0, r=0, b=0, t=0))
     st.plotly_chart(fig3, use_container_width=True)
 
-# === NUEVA PESTAÑA: MAXWELL-BOLTZMANN ===
+# --- PESTAÑA 3: Maxwell-Boltzmann ---
 with tab3:
     st.markdown("### Distribución de Velocidades de Maxwell-Boltzmann")
-    st.write(f"Observa cómo se mueven las moléculas de **{gas}** al calentarlas.")
+    st.write(f"Cinética molecular del **{gas}** en función de la temperatura.")
     
-    # Control deslizante solo para esta pestaña
     temp_mb = st.slider("🌡️ Modifica la Temperatura del Gas (Kelvin):", min_value=100, max_value=1500, value=int(Tc), step=50)
     
-    # Fórmulas de velocidad
-    vp = np.sqrt((2 * R_J * temp_mb) / MasaMolar)          # Velocidad más probable
-    v_prom = np.sqrt((8 * R_J * temp_mb) / (np.pi * MasaMolar)) # Velocidad promedio
-    v_rms = np.sqrt((3 * R_J * temp_mb) / MasaMolar)       # Velocidad cuadrática media (RMS)
+    vp = np.sqrt((2 * R_J * temp_mb) / MasaMolar)          
+    v_prom = np.sqrt((8 * R_J * temp_mb) / (np.pi * MasaMolar)) 
+    v_rms = np.sqrt((3 * R_J * temp_mb) / MasaMolar)       
     
-    # Eje X de velocidades (de 0 a 3 veces la RMS para que se vea bien la curva)
     v = np.linspace(0, v_rms * 3, 1000)
-    
-    # Fórmula de Maxwell-Boltzmann (Densidad de probabilidad)
     fv = 4 * np.pi * (MasaMolar / (2 * np.pi * R_J * temp_mb))**(1.5) * (v**2) * np.exp(-MasaMolar * (v**2) / (2 * R_J * temp_mb))
     
     fig_mb = go.Figure()
     fig_mb.add_trace(go.Scatter(x=v, y=fv, fill='tozeroy', mode='lines', line=dict(color='#00bcd4', width=3), name="Distribución"))
     
-    # Líneas verticales para explicar las velocidades clave
-    fig_mb.add_vline(x=vp, line_dash="dash", line_color="yellow", annotation_text=f"Más probable ({vp:.0f} m/s)")
-    fig_mb.add_vline(x=v_rms, line_dash="dash", line_color="red", annotation_text=f"RMS ({v_rms:.0f} m/s)")
+    fig_mb.add_vline(x=vp, line_dash="dash", line_color="#fbc02d", 
+                     annotation_text=f"Más probable ({vp:.0f} m/s)", 
+                     annotation_position="top left")
+                     
+    fig_mb.add_vline(x=v_rms, line_dash="dash", line_color="#d32f2f", 
+                     annotation_text=f"RMS ({v_rms:.0f} m/s)", 
+                     annotation_position="top right")
     
     fig_mb.update_layout(
         xaxis_title="Velocidad de las moléculas (metros/segundo)",
@@ -156,5 +179,3 @@ with tab3:
     )
     
     st.plotly_chart(fig_mb, use_container_width=True)
-    
-    st.info("**Para la exposición:** Desliza la temperatura hacia arriba. Verás que la curva se hace más ancha y baja. Esto significa que al darles más calor (energía), el abanico de velocidades aumenta y hay más moléculas yendo súper rápido (la cola de la gráfica se estira a la derecha).")
