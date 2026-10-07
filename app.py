@@ -190,3 +190,83 @@ with tab3:
     )
     
     st.plotly_chart(fig_mb, use_container_width=True)
+
+# --- PESTAÑA 4: Simulador de Enfriamiento Agroindustrial ---
+with tab4:
+    st.header("❄️ Simulador de Enfriamiento y Equilibrio Térmico")
+    st.markdown("Proyección de tiempo y energía para alcanzar el equilibrio térmico en cámaras de frío.")
+    
+    col_input, col_grafico = st.columns([1, 2])
+    
+    with col_input:
+        st.subheader("Parámetros del Sistema")
+        
+        # Productos basados en los ejercicios de la clase
+        producto = st.selectbox("Selecciona el Producto:", ["Néctar de Maracuyá", "Leche Cruda", "Pulpa de Mango"])
+        
+        # Asignar propiedades intensivas (Densidad y Calor Específico aprox)
+        if producto == "Néctar de Maracuyá":
+            densidad = 1.05  # kg/L
+            cp = 3.8         # kJ/kg°C
+            t_ini_default = 25.0
+            t_camara_default = 5.0
+            k_enfriamiento = 0.02 # Constante de enfriamiento
+        elif producto == "Leche Cruda":
+            densidad = 1.03  # kg/L basado en el PDF
+            cp = 3.93
+            t_ini_default = 30.0
+            t_camara_default = 4.0
+            k_enfriamiento = 0.015
+        else:
+            densidad = 1.01
+            cp = 3.6
+            t_ini_default = 20.0
+            t_camara_default = -18.0
+            k_enfriamiento = 0.025
+            
+        # Propiedad Extensiva: Volumen
+        volumen = st.number_input("Volumen del lote (Litros):", min_value=10, max_value=5000, value=1000, step=100)
+        
+        st.markdown("---")
+        t_inicial = st.slider("Temp. Inicial del Producto (°C):", -10.0, 90.0, t_ini_default)
+        t_camara = st.slider("Temp. de la Cámara/Entorno (°C):", -25.0, 30.0, t_camara_default)
+        
+        # Cálculos termodinámicos
+        masa = volumen * densidad
+        calor_remover = masa * cp * (t_inicial - t_camara)
+        
+    with col_grafico:
+        # Ley de Enfriamiento de Newton para simular el proceso hacia el equilibrio
+        tiempo = np.linspace(0, 300, 200) # Simulación de 0 a 300 minutos
+        temperatura_t = t_camara + (t_inicial - t_camara) * np.exp(-k_enfriamiento * tiempo)
+        
+        fig_enfriamiento = go.Figure()
+        
+        # Curva de enfriamiento del producto
+        fig_enfriamiento.add_trace(go.Scatter(x=tiempo, y=temperatura_t, mode='lines', 
+                                              name=f'Temp. {producto}', line=dict(color='#ff9800', width=4)))
+        
+        # Línea de la cámara (Equilibrio)
+        fig_enfriamiento.add_hline(y=t_camara, line_dash="dash", line_color="#00bcd4", 
+                                   annotation_text=f"Equilibrio Térmico ({t_camara}°C)", annotation_position="bottom right")
+        
+        fig_enfriamiento.update_layout(
+            title=f"Curva de Aproximación al Equilibrio Térmico ({producto})",
+            xaxis_title="Tiempo (Minutos)",
+            yaxis_title="Temperatura (°C)",
+            hovermode="x unified",
+            height=400
+        )
+        st.plotly_chart(fig_enfriamiento, use_container_width=True)
+
+    # Panel de Resultados Termodinámicos
+    st.markdown("### 📊 Reporte Termodinámico del Proceso")
+    res1, res2, res3 = st.columns(3)
+    
+    res1.info(f"**Propiedad Extensiva (Masa):**\n\n{masa:,.2f} kg\n\n*(Calculado con densidad de {densidad} kg/L)*")
+    res2.warning(f"**Transferencia de Calor (Q):**\n\n{calor_remover:,.2f} kJ\n\n*(Energía a extraer para llegar al equilibrio)*")
+    
+    # Conversión de temperatura final
+    t_fin_k = t_camara + 273.15
+    t_fin_f = (t_camara * 1.8) + 32
+    res3.success(f"**Estado Final (Ley Cero):**\n\n{t_camara}°C | {t_fin_k} K | {t_fin_f}°F\n\n*(Sistema estabilizado)*")
