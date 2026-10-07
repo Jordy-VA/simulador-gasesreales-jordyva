@@ -2,7 +2,6 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 from scipy.optimize import fsolve
-import pandas as pd  # <--- Añadido para hacer la tabla de la tarea
 
 # ==========================================
 # 1. CONFIGURACIÓN Y ESTILOS
@@ -65,24 +64,27 @@ def maxwell_vdw(T, a, b):
 # ==========================================
 # 3. INTERFAZ DE USUARIO (UI)
 # ==========================================
-st.title("🌱 Dashboard Termodinámico: Fluidos Reales y Tareas")
+st.title("🌱 Dashboard Termodinámico: Fluidos Reales y Cinética Molecular")
 st.markdown("Herramienta interactiva para ingeniería agroindustrial y fisicoquímica.")
 
 st.sidebar.header("⚙️ Panel de Control")
 gas = st.sidebar.selectbox("Selecciona el Fluido de Trabajo:", list(GASES_PROPS.keys()))
 modelo = st.sidebar.selectbox("Ecuación de Estado:", ["Van der Waals", "Peng-Robinson"])
 
+st.sidebar.markdown("---")
+
+# DICCIONARIO DE TIPS DINÁMICOS
 TIPS_AGRO = {
-    "Dióxido de Carbono (CO2)": "💡 **Aplicación Agroindustrial:** El CO2 supercrítico es vital para extraer aceites esenciales o descafeinar café.",
-    "Agua (H2O)": "💡 **Aplicación Agroindustrial:** El vapor sobrecalentado es el principal medio de transferencia de calor en marmitas y pasteurización.",
-    "Nitrógeno (N2)": "💡 **Aplicación Agroindustrial:** En fase líquida se usa para el congelamiento ultra rápido (IQF) de frutas y hortalizas.",
-    "Etanol (C2H5OH)": "💡 **Aplicación Agroindustrial:** Solvente orgánico GRAS utilizado en la extracción de pigmentos y biocompuestos.",
-    "Metano (CH4)": "💡 **Aplicación Agroindustrial:** Componente principal del biogás, obtenido por biodigestión anaerobia de residuos.",
-    "Amoníaco (NH3)": "💡 **Aplicación Agroindustrial:** El refrigerante industrial por excelencia en frigoríficos de agroexportación.",
-    "Propano (C3H8)": "💡 **Aplicación Agroindustrial:** Refrigerante ecológico que está reemplazando a los freones en equipos comerciales."
+    "Dióxido de Carbono (CO2)": "💡 **Aplicación Agroindustrial:** El CO2 supercrítico es vital para extraer aceites esenciales o descafeinar café. Su baja temperatura crítica (31°C) evita la degradación térmica de compuestos sensibles.",
+    "Agua (H2O)": "💡 **Aplicación Agroindustrial:** El vapor sobrecalentado es el principal medio de transferencia de calor en marmitas, pasteurización y esterilización de alimentos.",
+    "Nitrógeno (N2)": "💡 **Aplicación Agroindustrial:** En fase líquida (criogénico) se usa para el congelamiento ultra rápido (IQF) de frutas y hortalizas. Como gas, se usa en envasado de atmósfera modificada.",
+    "Etanol (C2H5OH)": "💡 **Aplicación Agroindustrial:** Solvente orgánico GRAS (seguro) utilizado en la extracción de pigmentos y biocompuestos, y como fluido secundario en refrigeración.",
+    "Metano (CH4)": "💡 **Aplicación Agroindustrial:** Componente principal del biogás, obtenido por biodigestión anaerobia de residuos agrícolas para la cogeneración de energía térmica y eléctrica.",
+    "Amoníaco (NH3)": "💡 **Aplicación Agroindustrial:** El refrigerante industrial por excelencia. Su alto calor latente de vaporización lo hace el rey de la cadena de frío en frigoríficos de agroexportación.",
+    "Propano (C3H8)": "💡 **Aplicación Agroindustrial:** Conocido como R-290, es un refrigerante ecológico que está reemplazando a los freones en equipos comerciales por su bajo potencial de calentamiento global."
 }
 
-st.sidebar.markdown("---")
+# Mostrar el tip dinámico según el gas seleccionado
 st.sidebar.success(TIPS_AGRO[gas])
 
 Tc, Pc, w, MasaMolar = GASES_PROPS[gas]
@@ -101,19 +103,15 @@ def calc_P(V, T):
         alpha = (1 + kappa * (1 - np.sqrt(T / Tc)))**2
         return (R_bar * T) / (V - b) - (a * alpha) / (V**2 + 2*b*V - b**2)
 
+# Tarjetas superiores
 col1, col2, col3 = st.columns(3)
 col1.metric("Temperatura Crítica (Tc)", f"{Tc} K")
 col2.metric("Presión Crítica (Pc)", f"{Pc} bar")
 col3.metric("Masa Molar (M)", f"{MasaMolar*1000:.2f} g/mol")
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ¡AQUÍ ESTÁ LA MAGIA! AHORA SON 4 PESTAÑAS
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📉 Análisis 2D (Gases Reales)", 
-    "🧊 Superficie 3D", 
-    "🚀 Velocidad Molecular", 
-    "📝 Tarea Semana 4" # <--- Nueva pestaña
-])
+# Pestañas
+tab1, tab2, tab3 = st.tabs(["📉 Análisis 2D (Gases Reales)", "🧊 Superficie 3D", "🚀 Velocidad Molecular (Maxwell)"])
 
 # --- PESTAÑA 1: Gráficos 2D ---
 with tab1:
@@ -150,101 +148,46 @@ with tab1:
 # --- PESTAÑA 2: Superficie 3D ---
 with tab2:
     st.markdown("Visualización espacial interactiva. ¡Gira y acerca la campana P-V-T con el ratón!")
+    
     V_grid, T_grid = np.meshgrid(np.linspace(1.2 * b, 5 * Vc, 50), np.linspace(Tc * 0.7, Tc * 1.3, 50))
     P_mesh = np.clip(calc_P(V_grid, T_grid), 0, Pc * 3)
+    
     fig3 = go.Figure(data=[go.Surface(z=P_mesh, x=V_grid, y=T_grid, colorscale='Greens', opacity=0.9)])
     fig3.add_trace(go.Scatter3d(x=[Vc], y=[Tc], z=[Pc], mode='markers', name='Punto Crítico', marker=dict(color='red', size=8)))
+    
     fig3.update_layout(scene=dict(xaxis_title='Volumen', yaxis_title='Temperatura', zaxis_title='Presión'), margin=dict(l=0, r=0, b=0, t=0))
     st.plotly_chart(fig3, use_container_width=True)
 
 # --- PESTAÑA 3: Maxwell-Boltzmann ---
 with tab3:
     st.markdown("### Distribución de Velocidades de Maxwell-Boltzmann")
+    st.write(f"Cinética molecular del **{gas}** en función de la temperatura.")
+    
     temp_mb = st.slider("🌡️ Modifica la Temperatura del Gas (Kelvin):", min_value=100, max_value=1500, value=int(Tc), step=50)
+    
     vp = np.sqrt((2 * R_J * temp_mb) / MasaMolar)          
+    v_prom = np.sqrt((8 * R_J * temp_mb) / (np.pi * MasaMolar)) 
     v_rms = np.sqrt((3 * R_J * temp_mb) / MasaMolar)       
+    
     v = np.linspace(0, v_rms * 3, 1000)
     fv = 4 * np.pi * (MasaMolar / (2 * np.pi * R_J * temp_mb))**(1.5) * (v**2) * np.exp(-MasaMolar * (v**2) / (2 * R_J * temp_mb))
     
     fig_mb = go.Figure()
     fig_mb.add_trace(go.Scatter(x=v, y=fv, fill='tozeroy', mode='lines', line=dict(color='#00bcd4', width=3), name="Distribución"))
-    fig_mb.add_vline(x=vp, line_dash="dash", line_color="#fbc02d", annotation_text=f"Más probable ({vp:.0f} m/s)", annotation_position="top left")
-    fig_mb.add_vline(x=v_rms, line_dash="dash", line_color="#d32f2f", annotation_text=f"RMS ({v_rms:.0f} m/s)", annotation_position="top right")
-    fig_mb.update_layout(xaxis_title="Velocidad de las moléculas (metros/segundo)", yaxis_title="Probabilidad", hovermode="x unified", showlegend=False)
+    
+    fig_mb.add_vline(x=vp, line_dash="dash", line_color="#fbc02d", 
+                     annotation_text=f"Más probable ({vp:.0f} m/s)", 
+                     annotation_position="top left")
+                     
+    fig_mb.add_vline(x=v_rms, line_dash="dash", line_color="#d32f2f", 
+                     annotation_text=f"RMS ({v_rms:.0f} m/s)", 
+                     annotation_position="top right")
+    
+    fig_mb.update_layout(
+        xaxis_title="Velocidad de las moléculas (metros/segundo)",
+        yaxis_title="Probabilidad",
+        hovermode="x unified",
+        showlegend=False
+    )
+    
     st.plotly_chart(fig_mb, use_container_width=True)
-
-# ==========================================
-# PESTAÑA 4: LA TAREA DEL PDF
-# ==========================================
-with tab4:
-    st.header("📝 Resolución de Ejercicios de Aplicación Agroindustrial")
-    st.write("Selecciona qué ejercicio de la clase quieres simular:")
-    
-    # Menú de botones para los ejercicios
-    ejercicio = st.radio(" ", ["Ejercicio 1: Sistemas", "Ejercicio 2: Propiedades", "Ejercicio 3: Temperaturas", "Ejercicio 4: Equilibrio"], horizontal=True)
-    st.markdown("---")
-    
-    if ejercicio == "Ejercicio 1: Sistemas":
-        st.subheader("Clasificación de Sistemas Agroindustriales")
-        equipo = st.selectbox("Selecciona el equipo de la planta:", [
-            "Autoclave con latas selladas (121 °C)", 
-            "Secador de bandejas (aire caliente)", 
-            "Tanque de enfriamiento de leche (aislado)", 
-            "Fermentador de yogur (baño de agua)", 
-            "Pasteurizador de placas (flujo continuo)"
-        ])
-        
-        if "Autoclave" in equipo:
-            st.success("**Sistema Cerrado:** No intercambia masa (latas selladas), pero sí calor con el vapor (paredes diatérmicas, rígidas e impermeables).")
-        elif "Secador" in equipo:
-            st.success("**Sistema Abierto:** Intercambia masa (el agua se evapora) y calor con el aire. Paredes permeables y diatérmicas.")
-        elif "Tanque" in equipo:
-            st.success("**Sistema Aislado:** Al estar sellado y con aislamiento térmico ideal, no intercambia ni masa ni calor. Paredes impermeables y adiabáticas.")
-        elif "Fermentador" in equipo:
-            st.success("**Sistema Cerrado:** Tiene tapa hermética (no entra/sale masa), pero intercambia calor con el baño de agua a 43°C (pared diatérmica).")
-        elif "Pasteurizador" in equipo:
-            st.success("**Sistema Abierto:** Funciona en flujo continuo. Entra jugo frío y sale caliente (intercambia masa y calor).")
-
-    elif ejercicio == "Ejercicio 2: Propiedades":
-        st.subheader("Propiedades de la Leche: Tanque de Acopio")
-        col1, col2 = st.columns(2)
-        volumen = col1.slider("Modifica el Volumen (Litros):", 500, 4000, 2000)
-        densidad = col2.slider("Modifica la Densidad (kg/L):", 1.00, 1.06, 1.03)
-        
-        masa = volumen * densidad
-        st.info(f"👉 **Masa Total Calculada =** {masa} kg")
-        
-        st.markdown(f"""
-        Si dividimos este tanque de **{volumen} L** en dos partes iguales:
-        *   **Propiedades Extensivas (Cambian):** El volumen y la masa se reducen a la mitad.
-        *   **Propiedades Intensivas (Se mantienen):** La temperatura sigue siendo 4 °C, la densidad sigue siendo {densidad} kg/L, los sólidos al 12.5% y el pH en 6.7.
-        """)
-
-    elif ejercicio == "Ejercicio 3: Temperaturas":
-        st.subheader("Calculadora de Temperaturas de Proceso")
-        st.write("El programa usa automáticamente: $T(K) = T(^\circ C) + 273.15$ y $T(^\circ F) = 1.8 \cdot T(^\circ C) + 32$")
-        
-        datos = {
-            "Operación": ["Refrigeración leche", "Pasteurización HTST", "Esterilización autoclave", "Congelación pulpa mango", "Contenedor a EE.UU."],
-            "T (°C)": [4, 72, 121, -18, -17.78],
-        }
-        df = pd.DataFrame(datos)
-        df["T (K)"] = df["T (°C)"] + 273.15
-        df["T (°F)"] = 1.8 * df["T (°C)"] + 32
-        
-        st.dataframe(df.style.format({"T (°C)": "{:.2f}", "T (K)": "{:.2f}", "T (°F)": "{:.2f}"}), use_container_width=True)
-
-    elif ejercicio == "Ejercicio 4: Equilibrio":
-        st.subheader("Análisis de Equilibrio y Reversibilidad")
-        
-        st.write("🌡️ **a) Néctar de Maracuyá (De 25 °C a 5 °C):**")
-        st.info("Alcanza el **equilibrio térmico** a una temperatura final de 5 °C.")
-        
-        st.write("🍓 **b) Caja de fresas a 5 °C y aire a 5 °C:**")
-        st.info("Están en equilibrio térmico justificado por la **Ley Cero de la Termodinámica**.")
-        
-        st.write("🔄 **c) Tipos de procesos:**")
-        st.info("- Secado de quinua y cocción de papa son **Irreversibles**.\n- Compresión lenta de CO2 sin fricción es **Reversible**.")
-        
-        st.write("⚙️ **d) Ciclo del Refrigerante:**")
-        st.info("Describe un **Ciclo Cerrado**, porque el refrigerante vuelve a su estado inicial para repetir el trabajo.")
