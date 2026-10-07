@@ -109,8 +109,13 @@ col2.metric("Presión Crítica (Pc)", f"{Pc} bar")
 col3.metric("Masa Molar (M)", f"{MasaMolar*1000:.2f} g/mol")
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Pestañas
-tab1, tab2, tab3 = st.tabs(["📉 Análisis 2D (Gases Reales)", "🧊 Superficie 3D", "🚀 Velocidad Molecular (Maxwell)"])
+# ¡AQUÍ ESTÁ LA LÍNEA CORREGIDA! Se agregaron las 4 pestañas
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📉 Análisis 2D (Gases Reales)", 
+    "🧊 Superficie 3D", 
+    "🚀 Velocidad Molecular (Maxwell)", 
+    "❄️ Enfriamiento Agroindustrial"
+])
 
 # --- PESTAÑA 1: Gráficos 2D ---
 with tab1:
@@ -201,18 +206,16 @@ with tab4:
     with col_input:
         st.subheader("Parámetros del Sistema")
         
-        # Productos basados en los ejercicios de la clase
         producto = st.selectbox("Selecciona el Producto:", ["Néctar de Maracuyá", "Leche Cruda", "Pulpa de Mango"])
         
-        # Asignar propiedades intensivas (Densidad y Calor Específico aprox)
         if producto == "Néctar de Maracuyá":
-            densidad = 1.05  # kg/L
-            cp = 3.8         # kJ/kg°C
+            densidad = 1.05  
+            cp = 3.8         
             t_ini_default = 25.0
             t_camara_default = 5.0
-            k_enfriamiento = 0.02 # Constante de enfriamiento
+            k_enfriamiento = 0.02 
         elif producto == "Leche Cruda":
-            densidad = 1.03  # kg/L basado en el PDF
+            densidad = 1.03  
             cp = 3.93
             t_ini_default = 30.0
             t_camara_default = 4.0
@@ -224,29 +227,24 @@ with tab4:
             t_camara_default = -18.0
             k_enfriamiento = 0.025
             
-        # Propiedad Extensiva: Volumen
         volumen = st.number_input("Volumen del lote (Litros):", min_value=10, max_value=5000, value=1000, step=100)
         
         st.markdown("---")
         t_inicial = st.slider("Temp. Inicial del Producto (°C):", -10.0, 90.0, t_ini_default)
         t_camara = st.slider("Temp. de la Cámara/Entorno (°C):", -25.0, 30.0, t_camara_default)
         
-        # Cálculos termodinámicos
         masa = volumen * densidad
         calor_remover = masa * cp * (t_inicial - t_camara)
         
     with col_grafico:
-        # Ley de Enfriamiento de Newton para simular el proceso hacia el equilibrio
-        tiempo = np.linspace(0, 300, 200) # Simulación de 0 a 300 minutos
+        tiempo = np.linspace(0, 300, 200) 
         temperatura_t = t_camara + (t_inicial - t_camara) * np.exp(-k_enfriamiento * tiempo)
         
         fig_enfriamiento = go.Figure()
         
-        # Curva de enfriamiento del producto
         fig_enfriamiento.add_trace(go.Scatter(x=tiempo, y=temperatura_t, mode='lines', 
                                               name=f'Temp. {producto}', line=dict(color='#ff9800', width=4)))
         
-        # Línea de la cámara (Equilibrio)
         fig_enfriamiento.add_hline(y=t_camara, line_dash="dash", line_color="#00bcd4", 
                                    annotation_text=f"Equilibrio Térmico ({t_camara}°C)", annotation_position="bottom right")
         
@@ -259,14 +257,12 @@ with tab4:
         )
         st.plotly_chart(fig_enfriamiento, use_container_width=True)
 
-    # Panel de Resultados Termodinámicos
     st.markdown("### 📊 Reporte Termodinámico del Proceso")
     res1, res2, res3 = st.columns(3)
     
     res1.info(f"**Propiedad Extensiva (Masa):**\n\n{masa:,.2f} kg\n\n*(Calculado con densidad de {densidad} kg/L)*")
     res2.warning(f"**Transferencia de Calor (Q):**\n\n{calor_remover:,.2f} kJ\n\n*(Energía a extraer para llegar al equilibrio)*")
     
-    # Conversión de temperatura final
     t_fin_k = t_camara + 273.15
     t_fin_f = (t_camara * 1.8) + 32
     res3.success(f"**Estado Final (Ley Cero):**\n\n{t_camara}°C | {t_fin_k} K | {t_fin_f}°F\n\n*(Sistema estabilizado)*")
