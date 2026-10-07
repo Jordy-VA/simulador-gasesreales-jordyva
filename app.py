@@ -69,13 +69,11 @@ st.markdown("Herramienta interactiva para ingeniería agroindustrial y fisicoqu�
 
 st.sidebar.header("⚙️ Panel de Control")
 
-# Selector de gas (Esto recarga el programa y actualiza todo)
 gas = st.sidebar.selectbox("Selecciona el Fluido de Trabajo:", list(GASES_PROPS.keys()))
 modelo = st.sidebar.selectbox("Ecuación de Estado:", ["Van der Waals", "Peng-Robinson"])
 
 st.sidebar.markdown("---")
 
-# DICCIONARIO DE TIPS DINÁMICOS
 TIPS_AGRO = {
     "Dióxido de Carbono (CO2)": "💡 **Aplicación Agroindustrial:** El CO2 supercrítico es vital para extraer aceites esenciales o descafeinar café. Su baja temperatura crítica (31°C) evita la degradación térmica de compuestos sensibles.",
     "Agua (H2O)": "💡 **Aplicación Agroindustrial:** El vapor sobrecalentado es el principal medio de transferencia de calor en marmitas, pasteurización y esterilización de alimentos.",
@@ -86,7 +84,6 @@ TIPS_AGRO = {
     "Propano (C3H8)": "💡 **Aplicación Agroindustrial:** Conocido como R-290, es un refrigerante ecológico que está reemplazando a los freones en equipos comerciales por su bajo potencial de calentamiento global."
 }
 
-# Mostrar el tip dinámico conectado directamente a la variable "gas"
 st.sidebar.success(TIPS_AGRO[gas])
 
 Tc, Pc, w, MasaMolar = GASES_PROPS[gas]
@@ -165,4 +162,31 @@ with tab3:
     st.markdown("### Distribución de Velocidades de Maxwell-Boltzmann")
     st.write(f"Cinética molecular del **{gas}** en función de la temperatura.")
     
-    temp_mb = st.slider("🌡️ Modifica
+    temp_mb = st.slider("🌡️ Modifica la Temperatura del Gas (Kelvin):", min_value=100, max_value=1500, value=int(Tc), step=50)
+    
+    vp = np.sqrt((2 * R_J * temp_mb) / MasaMolar)          
+    v_prom = np.sqrt((8 * R_J * temp_mb) / (np.pi * MasaMolar)) 
+    v_rms = np.sqrt((3 * R_J * temp_mb) / MasaMolar)       
+    
+    v = np.linspace(0, v_rms * 3, 1000)
+    fv = 4 * np.pi * (MasaMolar / (2 * np.pi * R_J * temp_mb))**(1.5) * (v**2) * np.exp(-MasaMolar * (v**2) / (2 * R_J * temp_mb))
+    
+    fig_mb = go.Figure()
+    fig_mb.add_trace(go.Scatter(x=v, y=fv, fill='tozeroy', mode='lines', line=dict(color='#00bcd4', width=3), name="Distribución"))
+    
+    fig_mb.add_vline(x=vp, line_dash="dash", line_color="#fbc02d", 
+                     annotation_text=f"Más probable ({vp:.0f} m/s)", 
+                     annotation_position="top left")
+                     
+    fig_mb.add_vline(x=v_rms, line_dash="dash", line_color="#d32f2f", 
+                     annotation_text=f"RMS ({v_rms:.0f} m/s)", 
+                     annotation_position="top right")
+    
+    fig_mb.update_layout(
+        xaxis_title="Velocidad de las moléculas (metros/segundo)",
+        yaxis_title="Probabilidad",
+        hovermode="x unified",
+        showlegend=False
+    )
+    
+    st.plotly_chart(fig_mb, use_container_width=True)
