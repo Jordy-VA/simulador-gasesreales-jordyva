@@ -109,12 +109,12 @@ col2.metric("Presión Crítica (Pc)", f"{Pc} bar")
 col3.metric("Masa Molar (M)", f"{MasaMolar*1000:.2f} g/mol")
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ¡AQUÍ ESTÁ LA LÍNEA CORREGIDA! Se agregaron las 4 pestañas
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📉 Análisis 2D (Gases Reales)", 
     "🧊 Superficie 3D", 
     "🚀 Velocidad Molecular (Maxwell)", 
-    "❄️ Enfriamiento Agroindustrial"
+    "❄️ Enfriamiento Agroindustrial",
+    "🥔 Respiración Poscosecha (Ley de Hess)"
 ])
 
 # --- PESTAÑA 1: Gráficos 2D ---
@@ -130,6 +130,8 @@ with tab1:
         Vl, Vv, Psat = maxwell_vdw(T_sub, a, b)
         if not np.isnan(Psat):
             fig1.add_trace(go.Scatter(x=[Vl, Vv], y=[Psat, Psat], name='Condensación (Maxwell)', line=dict(color='gray', width=2, dash='dash')))
+        else:
+            st.warning(f"La isoterma de Maxwell para {T_sub:.1f} K no convergió con los parámetros actuales.")
     fig1.add_trace(go.Scatter(x=V_arr, y=calc_P(V_arr, T_crit), name=f'Crítica ({T_crit:.1f} K)', line=dict(color='#ff9800', width=3)))
     fig1.add_trace(go.Scatter(x=V_arr, y=calc_P(V_arr, T_sup), name=f'Supercrítica ({T_sup:.1f} K)', line=dict(color='#ffeb3b', width=3)))
     fig1.add_trace(go.Scatter(x=[Vc], y=[Pc], mode='markers', name='Punto Crítico', marker=dict(color='red', size=10)))
@@ -237,7 +239,8 @@ with tab4:
         calor_remover = masa * cp * (t_inicial - t_camara)
         
     with col_grafico:
-        tiempo = np.linspace(0, 300, 200) 
+        tiempo_max = -np.log(0.01) / k_enfriamiento
+        tiempo = np.linspace(0, tiempo_max, 200) 
         temperatura_t = t_camara + (t_inicial - t_camara) * np.exp(-k_enfriamiento * tiempo)
         
         fig_enfriamiento = go.Figure()
@@ -266,3 +269,54 @@ with tab4:
     t_fin_k = t_camara + 273.15
     t_fin_f = (t_camara * 1.8) + 32
     res3.success(f"**Estado Final (Ley Cero):**\n\n{t_camara}°C | {t_fin_k} K | {t_fin_f}°F\n\n*(Sistema estabilizado)*")
+
+# --- PESTAÑA 5: Respiración Poscosecha (Ley de Hess) ---
+with tab5:
+    st.header("🥔 Carga Térmica por Respiración en Poscosecha")
+    st.markdown("Simulación basada en la Ley de Hess para estimar el calor generado por productos vivos.")
+    
+    col_in, col_out = st.columns([1, 2])
+    
+    with col_in:
+        st.subheader("Parámetros del Almacén")
+        masa_ton = st.slider("Masa del producto (Toneladas):", min_value=1.0, max_value=100.0, value=20.0, step=1.0)
+        tasa_resp = st.slider("Tasa de respiración (mg CO2 / kg·h):", min_value=1.0, max_value=50.0, value=10.0, step=1.0)
+        
+        st.info("💡 **Dato Termoquímico:** Según la estequiometría de la respiración (oxidación de glucosa), se liberan aproximadamente 10,616 kJ por cada kg de CO2 producido.")
+        delta_H_CO2 = 10616  
+        
+    with col_out:
+        masa_kg = masa_ton * 1000
+        kg_CO2_hora = masa_kg * (tasa_resp / 1000000) 
+        
+        Q_kJ_h = kg_CO2_hora * delta_H_CO2
+        Q_kW = Q_kJ_h / 3600  
+        Q_dia_MJ = (Q_kJ_h * 24) / 1000
+        
+        st.subheader("📊 Resultados de Carga Térmica")
+        res1, res2, res3 = st.columns(3)
+        res1.metric("Emisión de CO2", f"{kg_CO2_hora:.2f} kg/h")
+        res2.metric("Potencia Térmica", f"{Q_kW:.2f} kW")
+        res3.metric("Calor Diario", f"{Q_dia_MJ:.1f} MJ/día")
+        
+        horas = np.linspace(0, 24, 100)
+        calor_acumulado = (Q_kJ_h * horas) / 1000  
+        
+        fig_resp = go.Figure()
+        fig_resp.add_trace(go.Scatter(
+            x=horas, 
+            y=calor_acumulado, 
+            fill='tozeroy', 
+            mode='lines', 
+            line=dict(color='#795548', width=3),
+            name="Calor (MJ)"
+        ))
+        
+        fig_resp.update_layout(
+            title="Calor acumulado en la cámara durante 24 horas",
+            xaxis_title="Tiempo de almacenamiento (Horas)",
+            yaxis_title="Energía liberada (MJ)",
+            hovermode="x unified",
+            height=350
+        )
+        st.plotly_chart(fig_resp, use_container_width=True)
