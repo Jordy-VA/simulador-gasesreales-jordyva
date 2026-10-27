@@ -110,7 +110,7 @@ st.markdown("<h1 class='main-title'>🌱 AgroTermo Pro: Simulador Fisicoquímico
 st.markdown("<p style='text-align: center; color: gray; margin-bottom: 30px;'>Plataforma interactiva para el análisis termodinámico y diseño de procesos agroindustriales.</p>", unsafe_allow_html=True)
 
 # Panel Lateral
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2153/2153106.png", width=100) # Ícono decorativo genérico
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2153/2153106.png", width=100)
 st.sidebar.header("⚙️ Configuración Global")
 
 gas = st.sidebar.selectbox("Selecciona el Fluido de Trabajo:", list(GASES_PROPS.keys()))
@@ -325,6 +325,8 @@ with tab5:
         masa_ton = st.slider("Tonelaje Almacenado (t):", min_value=1.0, max_value=100.0, value=20.0, step=1.0)
         tasa_resp = st.number_input("Tasa de Respiración (mg CO2 / kg·h):", min_value=1.0, max_value=500.0, value=float(TASA_PRODUCTOS[producto_sel]))
         
+        dias_proyeccion = st.slider("Tiempo de Proyección (Días):", min_value=1, max_value=30, value=1, step=1)
+        
         delta_H_CO2 = 10616  
         
     with col_out:
@@ -333,23 +335,27 @@ with tab5:
         
         Q_kJ_h = kg_CO2_hora * delta_H_CO2
         Q_kW = Q_kJ_h / 3600  
-        Q_TR = Q_kW / 3.517 # Toneladas de refrigeración
-        Q_dia_MJ = (Q_kJ_h * 24) / 1000
+        Q_TR = Q_kW / 3.517
         
         res_a, res_b, res_c = st.columns(3)
         res_a.metric("Potencia Térmica", f"{Q_kW:.2f} kW")
         res_b.metric("Emisión de CO2", f"{kg_CO2_hora:.2f} kg/h")
         res_c.metric("Equipo Requerido", f"{Q_TR:.2f} TR", help="1 TR (Tonelada de Refrigeración) = 3.517 kW")
         
-        horas = np.linspace(0, 24, 100)
-        calor_acumulado = (Q_kJ_h * horas) / 1000  
+        horas_totales = dias_proyeccion * 24
+        horas_array = np.linspace(0, horas_totales, 100)
+        
+        eje_x = horas_array / 24 if dias_proyeccion > 1 else horas_array
+        titulo_eje_x = "Tiempo (Días)" if dias_proyeccion > 1 else "Tiempo (Horas)"
+        
+        calor_acumulado = (Q_kJ_h * horas_array) / 1000  
         
         fig_resp = go.Figure()
-        fig_resp.add_trace(go.Scatter(x=horas, y=calor_acumulado, fill='tozeroy', mode='lines', 
+        fig_resp.add_trace(go.Scatter(x=eje_x, y=calor_acumulado, fill='tozeroy', mode='lines', 
                                       line=dict(color='#8d6e63', width=3), name="Energía"))
         
-        fig_resp.update_layout(title=f"Energía térmica acumulada en 24h ({producto_sel.split()[0]})",
-                               xaxis_title="Tiempo (Horas)", yaxis_title="Calor liberado (MJ)",
+        fig_resp.update_layout(title=f"Energía térmica acumulada en {dias_proyeccion} día(s) ({producto_sel.split()[0]})",
+                               xaxis_title=titulo_eje_x, yaxis_title="Calor liberado (MJ)",
                                hovermode="x unified", height=300,
                                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_resp, use_container_width=True)
